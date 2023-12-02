@@ -1,6 +1,8 @@
 package main
 
-import "kkoutsilis/ssmg/cmd"
+import (
+	"ssmg/cmd"
+)
 
 func main() {
 	cmd.Execute()

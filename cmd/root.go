@@ -7,9 +7,11 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/spf13/cobra"
+	"gopkg.in/gomail.v2"
 )
 
 var version string = "0.0.1"
@@ -21,8 +23,8 @@ type Data struct {
 }
 
 type MatchPair struct {
-	Person1 string `json:"person1"`
-	Person2 string `json:"person2"`
+	Person1 Data `json:"person1"`
+	Person2 Data `json:"person2"`
 }
 
 func checkFileExists(path string) bool {
@@ -48,12 +50,58 @@ func match(data []Data) []MatchPair {
 	}
 
 	for i := 0; i < len(shuffledData); i++ {
-		matches = append(matches, MatchPair{Person1: shuffledData[i].Name, Person2: shuffledData[(i+1)%len(shuffledData)].Name})
-		// remove the matched pair from the list
-		shuffledData = append(shuffledData[:i], shuffledData[i+1:]...)
+		var p1 = shuffledData[i]
+		var p2 = shuffledData[(i+1)%len(shuffledData)]
+		matches = append(matches, MatchPair{Person1: p1, Person2: p2})
+		// remove the two matched persons from the list
+		shuffledData = append(shuffledData[:i], shuffledData[i+2:]...)
+		i--
+	}
+	return matches
+}
+
+func sendEmails(matches []MatchPair) {
+	host := os.Getenv("EMAIL_HOST")
+	strPort := os.Getenv("EMAIL_PORT")
+	user := os.Getenv("EMAIL_USER")
+	password := os.Getenv("EMAIL_PASSWORD")
+
+	port, err := strconv.Atoi(strPort)
+	if err != nil {
+		panic(err)
 	}
 
-	return matches
+	d := gomail.NewDialer(host, port, user, password)
+	s, err := d.Dial()
+	if err != nil {
+		panic(err)
+	}
+
+	m := gomail.NewMessage()
+	for _, match := range matches {
+		from := os.Getenv("EMAIL_FROM")
+		subject := "Your Secret Santa Match!"
+
+		m.SetHeader("From", from)
+		m.SetHeader("To", match.Person1.Email)
+		m.SetHeader("Subject", subject)
+		m.SetBody("text/html", "Hello "+match.Person1.Name+",<br><br>You are the secret santa for "+match.Person2.Name+"!<br><br>Best regards,<br>Secret Santa Match Generator")
+
+		if err := gomail.Send(s, m); err != nil {
+			log.Fatalf("Could not send email: %v", err)
+		}
+		m.Reset()
+
+		m.SetHeader("From", from)
+		m.SetHeader("To", match.Person2.Email)
+		m.SetHeader("Subject", subject)
+		m.SetBody("text/html", "Hello "+match.Person2.Name+",<br><br>You are the secret santa for "+match.Person1.Name+"!<br><br>Best regards,<br>Secret Santa Generator")
+
+		if err := gomail.Send(s, m); err != nil {
+			log.Fatalf("Could not send email: %v", err)
+		}
+		m.Reset()
+	}
 }
 
 var rootCmd = &cobra.Command{
@@ -62,7 +110,12 @@ var rootCmd = &cobra.Command{
 	ArgAliases: []string{"path"},
 	Version:    version,
 	Run: func(cmd *cobra.Command, args []string) {
-		var filePath string = args[0]
+		var filePath string
+		if len(args) == 0 {
+			filePath = "data.json"
+		} else {
+			filePath = args[0]
+		}
 		if filePath == "" {
 			filePath = "data.json"
 		}
@@ -96,11 +149,7 @@ var rootCmd = &cobra.Command{
 
 		matches := match(payload)
 
-		for _, match := range matches {
-			log.Println(match.Person1, " -> ", match.Person2)
-		}
-
-		// TODO send email to each participant with their match
+		sendEmails(matches)
 	},
 }
 
