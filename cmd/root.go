@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"time"
 
 	"github.com/spf13/cobra"
 	"gopkg.in/gomail.v2"
@@ -37,27 +36,25 @@ func checkIsJson(path string) bool {
 	return fileExtension == ".json"
 }
 
-func match(data []Data) []MatchPair {
-	var matches []MatchPair
-	rand.Seed(time.Now().UnixNano())
+func generateSecretSantaMatches(data []Data) ([]MatchPair, error) {
+	if len(data)%2 != 0 {
+		return nil, errors.New("number of participants is odd, please provide an even number of participants for the Secret Santa matches")
+	}
 
 	shuffledData := make([]Data, len(data))
 	copy(shuffledData, data)
-
-	for i := range shuffledData {
-		j := rand.Intn(i + 1)
+	rand.Shuffle(len(shuffledData), func(i, j int) {
 		shuffledData[i], shuffledData[j] = shuffledData[j], shuffledData[i]
+	})
+
+	var matches []MatchPair
+	for i := 0; i < len(shuffledData); i += 2 {
+		person1 := shuffledData[i]
+		person2 := shuffledData[(i+1)%len(shuffledData)]
+		matches = append(matches, MatchPair{Person1: person1, Person2: person2})
 	}
 
-	for i := 0; i < len(shuffledData); i++ {
-		var p1 = shuffledData[i]
-		var p2 = shuffledData[(i+1)%len(shuffledData)]
-		matches = append(matches, MatchPair{Person1: p1, Person2: p2})
-		// remove the two matched persons from the list
-		shuffledData = append(shuffledData[:i], shuffledData[i+2:]...)
-		i--
-	}
-	return matches
+	return matches, nil
 }
 
 func sendEmails(matches []MatchPair) {
@@ -143,11 +140,10 @@ var rootCmd = &cobra.Command{
 			log.Fatal("File is empty")
 		}
 
-		if len(payload)%2 != 0 {
-			log.Fatal("Number of participants is odd (", len(payload), "), please provide an even number of participants for the secret santa matches")
+		matches, err := generateSecretSantaMatches(payload)
+		if err != nil {
+			log.Fatal(err)
 		}
-
-		matches := match(payload)
 
 		sendEmails(matches)
 	},
