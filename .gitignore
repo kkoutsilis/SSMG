@@ -19,3 +19,6 @@
 
 # Go workspace file
 go.work
+
+# The json file used for the participants
+data.json
