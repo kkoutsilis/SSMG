@@ -56,8 +56,7 @@ func generateSecretSantaMatches(data []Data) ([]MatchPair, error) {
 
 	return matches, nil
 }
-
-func sendEmails(matches []MatchPair) {
+func sendEmail(to, subject, body string) error {
 	host := os.Getenv("EMAIL_HOST")
 	strPort := os.Getenv("EMAIL_PORT")
 	user := os.Getenv("EMAIL_USER")
@@ -65,39 +64,38 @@ func sendEmails(matches []MatchPair) {
 
 	port, err := strconv.Atoi(strPort)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	d := gomail.NewDialer(host, port, user, password)
 	s, err := d.Dial()
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	m := gomail.NewMessage()
+	m.SetHeader("From", os.Getenv("EMAIL_FROM"))
+	m.SetHeader("To", to)
+	m.SetHeader("Subject", subject)
+	m.SetBody("text/html", body)
+
+	return gomail.Send(s, m)
+}
+
+func sendEmails(matches []MatchPair) {
+	subject := "Your Secret Santa Match!"
+
 	for _, match := range matches {
-		from := os.Getenv("EMAIL_FROM")
-		subject := "Your Secret Santa Match!"
 
-		m.SetHeader("From", from)
-		m.SetHeader("To", match.Person1.Email)
-		m.SetHeader("Subject", subject)
-		m.SetBody("text/html", "Hello "+match.Person1.Name+",<br><br>You are the secret santa for "+match.Person2.Name+"!<br><br>Best regards,<br>Secret Santa Match Generator")
-
-		if err := gomail.Send(s, m); err != nil {
-			log.Fatalf("Could not send email: %v", err)
+		bodyPerson1 := "Hello " + match.Person1.Name + ",<br><br>You are the secret Santa for " + match.Person2.Name + "!<br><br>Best regards,<br>Secret Santa Match Generator"
+		if err := sendEmail(match.Person1.Email, subject, bodyPerson1); err != nil {
+			log.Printf("Error sending email to %s: %v", match.Person1.Email, err)
 		}
-		m.Reset()
 
-		m.SetHeader("From", from)
-		m.SetHeader("To", match.Person2.Email)
-		m.SetHeader("Subject", subject)
-		m.SetBody("text/html", "Hello "+match.Person2.Name+",<br><br>You are the secret santa for "+match.Person1.Name+"!<br><br>Best regards,<br>Secret Santa Generator")
-
-		if err := gomail.Send(s, m); err != nil {
-			log.Fatalf("Could not send email: %v", err)
+		bodyPerson2 := "Hello " + match.Person2.Name + ",<br><br>You are the secret Santa for " + match.Person1.Name + "!<br><br>Best regards,<br>Secret Santa Generator"
+		if err := sendEmail(match.Person2.Email, subject, bodyPerson2); err != nil {
+			log.Printf("Error sending email to %s: %v", match.Person2.Email, err)
 		}
-		m.Reset()
 	}
 }
 
