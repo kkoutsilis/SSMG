@@ -18,7 +18,7 @@ To use SSMG, you need to have go installed, clone the repo locally, provide a JS
 #### Environmntal Variables 
 - `EMAIL_HOST`: The email host, for example `smtp.gmail.com` for gmail.
 
-- `EMAIL_PORT`: The email port, tipically `583` form smpt.
+- `EMAIL_PORT`: The email port, tipically `583` for smtp.
 
 - `EMAIL_FROM`: The email sender, the one pulling the strings.
 
