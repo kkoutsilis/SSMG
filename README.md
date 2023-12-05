@@ -15,7 +15,7 @@ I am not so familiar with GO so the code probably needs cleaning and improvement
 
 To use SSMG, you need to have go installed, clone the repo locally, provide a JSON file containing the participant data and some environmental variables to be used to send the emails.
 
-#### Environmntal Variables 
+#### Environmental Variables 
 - `EMAIL_HOST`: The email host, for example `smtp.gmail.com` for gmail.
 
 - `EMAIL_PORT`: The email port, tipically `583` for smtp.
