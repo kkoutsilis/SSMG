@@ -36,11 +36,7 @@ func checkIsJson(path string) bool {
 	return fileExtension == ".json"
 }
 
-func generateSecretSantaMatches(data []Data) ([]MatchPair, error) {
-	if len(data)%2 != 0 {
-		return nil, errors.New("number of participants is odd, please provide an even number of participants for the Secret Santa matches")
-	}
-
+func generateSecretSantaMatches(data []Data) []MatchPair {
 	shuffledData := make([]Data, len(data))
 	copy(shuffledData, data)
 	rand.Shuffle(len(shuffledData), func(i, j int) {
@@ -48,14 +44,14 @@ func generateSecretSantaMatches(data []Data) ([]MatchPair, error) {
 	})
 
 	var matches []MatchPair
-	for i := 0; i < len(shuffledData); i += 2 {
+	for i := 0; i < len(shuffledData); i += 1 {
 		person1 := shuffledData[i]
 		person2 := shuffledData[(i+1)%len(shuffledData)]
 		matches = append(matches, MatchPair{Person1: person1, Person2: person2})
 	}
-
-	return matches, nil
+	return matches
 }
+
 func sendEmail(to, subject, body string) error {
 	host := os.Getenv("EMAIL_HOST")
 	strPort := os.Getenv("EMAIL_PORT")
@@ -84,17 +80,10 @@ func sendEmail(to, subject, body string) error {
 
 func sendEmails(matches []MatchPair) {
 	subject := "Your Secret Santa Match!"
-
 	for _, match := range matches {
-
 		bodyPerson1 := "Hello " + match.Person1.Name + ",<br><br>You are the secret Santa for " + match.Person2.Name + "!<br><br>Best regards,<br>Secret Santa Match Generator"
 		if err := sendEmail(match.Person1.Email, subject, bodyPerson1); err != nil {
 			log.Printf("Error sending email to %s: %v", match.Person1.Email, err)
-		}
-
-		bodyPerson2 := "Hello " + match.Person2.Name + ",<br><br>You are the secret Santa for " + match.Person1.Name + "!<br><br>Best regards,<br>Secret Santa Generator"
-		if err := sendEmail(match.Person2.Email, subject, bodyPerson2); err != nil {
-			log.Printf("Error sending email to %s: %v", match.Person2.Email, err)
 		}
 	}
 }
@@ -138,10 +127,7 @@ var rootCmd = &cobra.Command{
 			log.Fatal("File is empty")
 		}
 
-		matches, err := generateSecretSantaMatches(payload)
-		if err != nil {
-			log.Fatal(err)
-		}
+		matches := generateSecretSantaMatches(payload)
 
 		sendEmails(matches)
 	},
