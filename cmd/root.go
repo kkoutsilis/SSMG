@@ -22,8 +22,8 @@ type Data struct {
 }
 
 type MatchPair struct {
-	Person1 Data `json:"person1"`
-	Person2 Data `json:"person2"`
+	From Data `json:"from"`
+	To   Data `json:"to"`
 }
 
 func checkFileExists(path string) bool {
@@ -44,10 +44,10 @@ func generateSecretSantaMatches(data []Data) []MatchPair {
 	})
 
 	var matches []MatchPair
-	for i := 0; i < len(shuffledData); i += 1 {
-		person1 := shuffledData[i]
-		person2 := shuffledData[(i+1)%len(shuffledData)]
-		matches = append(matches, MatchPair{Person1: person1, Person2: person2})
+	for i := 0; i < len(shuffledData); i++ {
+		from := shuffledData[i]
+		to := shuffledData[(i+1)%len(shuffledData)]
+		matches = append(matches, MatchPair{From: from, To: to})
 	}
 	return matches
 }
@@ -81,16 +81,16 @@ func sendEmail(to, subject, body string) error {
 func sendEmails(matches []MatchPair) {
 	subject := "Your Secret Santa Match!"
 	for _, match := range matches {
-		bodyPerson1 := "Hello " + match.Person1.Name + ",<br><br>You are the secret Santa for " + match.Person2.Name + "!<br><br>Best regards,<br>Secret Santa Match Generator"
-		if err := sendEmail(match.Person1.Email, subject, bodyPerson1); err != nil {
-			log.Printf("Error sending email to %s: %v", match.Person1.Email, err)
+		emailBody := "Hello " + match.From.Name + ",<br><br>You are the secret Santa for " + match.To.Name + "!<br><br>Best regards,<br>Secret Santa Match Generator"
+		if err := sendEmail(match.From.Email, subject, emailBody); err != nil {
+			log.Printf("Error sending email to %s: %v", match.From.Email, err)
 		}
 	}
 }
 
 var rootCmd = &cobra.Command{
 	Use:        "run [path]",
-	Short:      "A cli tool that generates secret santa matches",
+	Short:      "A cli tool that generates secret santa matches and notifies the participants by email",
 	ArgAliases: []string{"path"},
 	Version:    version,
 	Run: func(cmd *cobra.Command, args []string) {
