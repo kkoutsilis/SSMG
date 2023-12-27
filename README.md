@@ -1,5 +1,7 @@
 
-# SSMG
+# SSMG 
+
+![CI](https://github.com/kkoutsilis/SSMG/actions/workflows/ci.yml/badge.svg)
 
 SSMG (Secret Santa Match Generator) is a simple CLI tool written in Go. It reads a JSON file containing Secret Santa participants, generates the matches, and sends an email to each participant with their assigned match.
 
