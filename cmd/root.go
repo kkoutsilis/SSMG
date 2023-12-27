@@ -43,10 +43,10 @@ func generateSecretSantaMatches(data []Data) []MatchPair {
 		shuffledData[i], shuffledData[j] = shuffledData[j], shuffledData[i]
 	})
 
-	return matchingAlgorithm(shuffledData)
+	return circlularMatchingAlgorithm(shuffledData)
 }
 
-func matchingAlgorithm(data []Data) []MatchPair {
+func circlularMatchingAlgorithm(data []Data) []MatchPair {
 	var matches []MatchPair
 	for i := 0; i < len(data); i++ {
 		from := data[i]

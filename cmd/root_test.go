@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"reflect"
 	"testing"
 )
 
@@ -42,3 +43,22 @@ func TestGenerateSecretSantaMachesReturnsAppropriateLenghtOfMatchPairs(t *testin
 	}
 }
 
+func TestCircularMatchingAlgorithmReturnsExpectedMatchPairs(t *testing.T) {
+	var payload []Data
+	payload = append(payload, Data{Name: "A", Email: "testa@test.org"})
+	payload = append(payload, Data{Name: "B", Email: "testb@test.org"})
+	payload = append(payload, Data{Name: "C", Email: "testb@test.org"})
+
+	var expected []MatchPair
+
+	expected = append(expected, MatchPair{From: payload[0], To: payload[1]})
+	expected = append(expected, MatchPair{From: payload[1], To: payload[2]})
+	expected = append(expected, MatchPair{From: payload[2], To: payload[0]})
+
+	result := circlularMatchingAlgorithm(payload)
+
+	if !reflect.DeepEqual(result, expected) {
+		t.Error("Expected circlularMatchingAlgorithm to return expected list of match pairs")
+	}
+
+}
