@@ -3,11 +3,13 @@ package cmd
 import (
 	"encoding/json"
 	"errors"
+	"html/template"
 	"log"
 	"math/rand"
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"gopkg.in/gomail.v2"
@@ -84,8 +86,22 @@ func sendEmail(to, subject, body string) error {
 
 func sendEmails(matches []MatchPair) {
 	subject := "Your Secret Santa Match!"
+
+	templateFile := "./templates/email_template.html"
+	tmpl, err := template.ParseFiles(templateFile)
+	if err != nil {
+		log.Fatalf("Error parsing email template: %v", err)
+	}
+
 	for _, match := range matches {
-		emailBody := "Hello " + match.From.Name + ",<br><br>You are the secret Santa for " + match.To.Name + "!<br><br>Best regards,<br>Secret Santa Match Generator"
+		var emailBodyBuffer = &strings.Builder{}
+		err := tmpl.Execute(emailBodyBuffer, match)
+		if err != nil {
+			log.Printf("Error executing template for %s: %v", match.From.Email, err)
+			continue
+		}
+		emailBody := emailBodyBuffer.String()
+
 		if err := sendEmail(match.From.Email, subject, emailBody); err != nil {
 			log.Printf("Error sending email to %s: %v", match.From.Email, err)
 		}
