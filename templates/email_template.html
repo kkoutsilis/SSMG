@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+            color: #333;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 28px;
+            margin-bottom: 20px;
+        }
+
+        p {
+            font-size: 18px;
+            line-height: 1;
+            margin-bottom: 10px;
+        }
+
+        .emphasis {
+            font-weight: bold;
+            color: #e44d26; /* A shade of red for emphasis */
+        }
+
+        .signature {
+            font-style: italic;
+            margin-top: 20px;
+            color: #777;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Hello {{.From.Name}},</h1>
+        <p>Your Secret Santa match is <span class="emphasis">{{.To.Name}}</span>!</p>
+        <p>Get ready to spread some holiday cheer!</p>
+        <p>Best regards,</p>
+        <p class="signature">Secret Santa Match Generator</p>
+    </div>
+</body>
+</html>
