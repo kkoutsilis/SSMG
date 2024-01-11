@@ -3,6 +3,7 @@ package cmd
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"html/template"
 	"log"
 	"math/rand"
@@ -15,7 +16,7 @@ import (
 	"gopkg.in/gomail.v2"
 )
 
-var version string = "0.0.1"
+var version string = "0.1.0"
 
 type Data struct {
 	Name     string   `json:"name"`
@@ -109,11 +110,12 @@ func sendEmails(matches []MatchPair) {
 }
 
 var rootCmd = &cobra.Command{
-	Use:        "run [path]",
-	Short:      "A cli tool that generates secret santa matches and notifies the participants by email",
-	ArgAliases: []string{"path"},
-	Version:    version,
-	Run: func(cmd *cobra.Command, args []string) {
+	Use:          "run [path]",
+	Short:        "A cli tool that generates secret santa matches and notifies the participants by email",
+	ArgAliases:   []string{"path"},
+	Version:      version,
+	SilenceUsage: true,
+	RunE: func(cmd *cobra.Command, args []string) error {
 		var filePath string
 		if len(args) == 0 {
 			filePath = "data.json"
@@ -125,31 +127,32 @@ var rootCmd = &cobra.Command{
 		}
 
 		if !checkFileExists(filePath) {
-			log.Fatal("File ", filePath, " does not exist")
+			return fmt.Errorf("file %s does not exist", filePath)
 		}
 
 		if !checkIsJson(filePath) {
-			log.Fatal("File ", filePath, " is not a json file")
+			return fmt.Errorf("file %s is not a json file", filePath)
 		}
 
 		file, err := os.ReadFile(filePath)
 		if err != nil {
-			log.Fatal("Error when opening file: ", err)
+			return fmt.Errorf("error when opening file: %w", err)
 		}
 
 		var payload []Data
 		err = json.Unmarshal(file, &payload)
 		if err != nil {
-			log.Fatal("Error reading file content: ", err)
+			return fmt.Errorf("error reading file content: %w", err)
 		}
 
 		if len(payload) == 0 {
-			log.Fatal("File is empty")
+			return errors.New("file is empty")
 		}
 
 		matches := generateSecretSantaMatches(payload)
-
 		sendEmails(matches)
+
+		return nil
 	},
 }
 
@@ -158,4 +161,5 @@ func Execute() {
 	if err != nil {
 		os.Exit(1)
 	}
+	os.Exit(0)
 }
