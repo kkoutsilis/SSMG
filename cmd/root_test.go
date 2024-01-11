@@ -34,7 +34,7 @@ func TestGenerateSecretSantaMachesReturnsAppropriateLenghtOfMatchPairs(t *testin
 	var payload []Data
 	payload = append(payload, Data{Name: "A", Email: "testa@test.org"})
 	payload = append(payload, Data{Name: "B", Email: "testb@test.org"})
-	payload = append(payload, Data{Name: "C", Email: "testb@test.org"})
+	payload = append(payload, Data{Name: "C", Email: "testc@test.org"})
 
 	matches := generateSecretSantaMatches(payload)
 
@@ -47,7 +47,7 @@ func TestCircularMatchingAlgorithmReturnsExpectedMatchPairs(t *testing.T) {
 	var payload []Data
 	payload = append(payload, Data{Name: "A", Email: "testa@test.org"})
 	payload = append(payload, Data{Name: "B", Email: "testb@test.org"})
-	payload = append(payload, Data{Name: "C", Email: "testb@test.org"})
+	payload = append(payload, Data{Name: "C", Email: "testc@test.org"})
 
 	var expected []MatchPair
 
