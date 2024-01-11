@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"html/template"
-	"log"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -85,28 +84,28 @@ func sendEmail(to, subject, body string) error {
 	return gomail.Send(s, m)
 }
 
-func sendEmails(matches []MatchPair) {
+func sendEmails(matches []MatchPair) error {
 	subject := "Your Secret Santa Match!"
 
 	templateFile := "./templates/email_template.html"
 	tmpl, err := template.ParseFiles(templateFile)
 	if err != nil {
-		log.Fatalf("Error parsing email template: %v", err)
+		return fmt.Errorf("failed to parse email template: %w", err)
 	}
 
 	for _, match := range matches {
 		var emailBodyBuffer = &strings.Builder{}
 		err := tmpl.Execute(emailBodyBuffer, match)
 		if err != nil {
-			log.Printf("Error executing template for %s: %v", match.From.Email, err)
-			continue
+			return fmt.Errorf("failed to execute template for %s: %w", match.From.Email, err)
 		}
 		emailBody := emailBodyBuffer.String()
 
 		if err := sendEmail(match.From.Email, subject, emailBody); err != nil {
-			log.Printf("Error sending email to %s: %v", match.From.Email, err)
+			return fmt.Errorf("failed to send email to %s: %w", match.From.Email, err)
 		}
 	}
+	return nil
 }
 
 var rootCmd = &cobra.Command{
@@ -150,7 +149,10 @@ var rootCmd = &cobra.Command{
 		}
 
 		matches := generateSecretSantaMatches(payload)
-		sendEmails(matches)
+		err = sendEmails(matches)
+		if err != nil {
+			return fmt.Errorf("error sending emails: %w", err)
+		}
 
 		return nil
 	},
