@@ -64,3 +64,4 @@ export EMAIL_FROM=test@example.org
 export EMAIL_USER=””
 export EMAIL_PASSWORD=””
 ```
+You can access the MailHog UI at `localhost:8025`

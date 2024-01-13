@@ -2,9 +2,8 @@ package cmd
 
 import (
 	"encoding/json"
-	"errors"
+	"fmt"
 	"html/template"
-	"log"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -12,10 +11,12 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+
+	"github.com/pkg/errors"
 	"gopkg.in/gomail.v2"
 )
 
-var version string = "0.0.1"
+var version string = "0.1.0"
 
 type Data struct {
 	Name     string   `json:"name"`
@@ -66,13 +67,13 @@ func sendEmail(to, subject, body string) error {
 
 	port, err := strconv.Atoi(strPort)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "error parsing email server port")
 	}
 
 	d := gomail.NewDialer(host, port, user, password)
 	s, err := d.Dial()
 	if err != nil {
-		return err
+		return errors.Wrap(err, "error dialing email server")
 	}
 
 	m := gomail.NewMessage()
@@ -84,36 +85,44 @@ func sendEmail(to, subject, body string) error {
 	return gomail.Send(s, m)
 }
 
-func sendEmails(matches []MatchPair) {
+func sendEmails(matches []MatchPair) ([]string, error) {
+	// TODO: add retry logic for failed emails (maybe use a queue)
+	// instead of sending each email individually,
+	// generate all the emails and send them in bulk to avoid individual errors
+	// or prompt the user to retry
+	emailIssues := make([]string, 0, len(matches))
 	subject := "Your Secret Santa Match!"
 
 	templateFile := "./templates/email_template.html"
 	tmpl, err := template.ParseFiles(templateFile)
 	if err != nil {
-		log.Fatalf("Error parsing email template: %v", err)
+		return emailIssues, errors.Wrap(err, "failed to parse email template")
 	}
 
 	for _, match := range matches {
 		var emailBodyBuffer = &strings.Builder{}
 		err := tmpl.Execute(emailBodyBuffer, match)
 		if err != nil {
-			log.Printf("Error executing template for %s: %v", match.From.Email, err)
+			emailIssues = append(emailIssues, fmt.Sprintf("failed to execute template for %s: %v", match.From.Email, err))
 			continue
+
 		}
 		emailBody := emailBodyBuffer.String()
 
 		if err := sendEmail(match.From.Email, subject, emailBody); err != nil {
-			log.Printf("Error sending email to %s: %v", match.From.Email, err)
+			emailIssues = append(emailIssues, fmt.Sprintf("failed to send email to %s: %v", match.From.Email, err))
 		}
 	}
+	return emailIssues, nil
 }
 
 var rootCmd = &cobra.Command{
-	Use:        "run [path]",
-	Short:      "A cli tool that generates secret santa matches and notifies the participants by email",
-	ArgAliases: []string{"path"},
-	Version:    version,
-	Run: func(cmd *cobra.Command, args []string) {
+	Use:          "run [path]",
+	Short:        "A cli tool that generates secret santa matches and notifies the participants by email",
+	ArgAliases:   []string{"path"},
+	Version:      version,
+	SilenceUsage: true,
+	RunE: func(cmd *cobra.Command, args []string) error {
 		var filePath string
 		if len(args) == 0 {
 			filePath = "data.json"
@@ -125,31 +134,42 @@ var rootCmd = &cobra.Command{
 		}
 
 		if !checkFileExists(filePath) {
-			log.Fatal("File ", filePath, " does not exist")
+			return fmt.Errorf("file %s does not exist", filePath)
+
 		}
 
 		if !checkIsJson(filePath) {
-			log.Fatal("File ", filePath, " is not a json file")
+			return fmt.Errorf("file %s is not a json file", filePath)
 		}
 
 		file, err := os.ReadFile(filePath)
 		if err != nil {
-			log.Fatal("Error when opening file: ", err)
+			return errors.Wrap(err, "error when opening file")
 		}
 
 		var payload []Data
 		err = json.Unmarshal(file, &payload)
 		if err != nil {
-			log.Fatal("Error reading file content: ", err)
+			return errors.Wrap(err, "error reading file content")
 		}
 
 		if len(payload) == 0 {
-			log.Fatal("File is empty")
+			return errors.New("file is empty")
 		}
 
 		matches := generateSecretSantaMatches(payload)
+		emailIssues, err := sendEmails(matches)
+		if err != nil {
+			return errors.Wrap(err, "error sending emails")
+		}
+		if len(emailIssues) > 0 {
+			for _, issue := range emailIssues {
+				fmt.Println(issue)
+			}
+			fmt.Println("Some emails failed to send, please check the logs for more details")
+		}
 
-		sendEmails(matches)
+		return nil
 	},
 }
 
@@ -158,4 +178,5 @@ func Execute() {
 	if err != nil {
 		os.Exit(1)
 	}
+	os.Exit(0)
 }
