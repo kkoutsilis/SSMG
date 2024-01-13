@@ -66,13 +66,13 @@ func sendEmail(to, subject, body string) error {
 
 	port, err := strconv.Atoi(strPort)
 	if err != nil {
-		return err
+		return fmt.Errorf("error reading email server port %w", err)
 	}
 
 	d := gomail.NewDialer(host, port, user, password)
 	s, err := d.Dial()
 	if err != nil {
-		return err
+		return fmt.Errorf("error dialing email server %w", err)
 	}
 
 	m := gomail.NewMessage()
