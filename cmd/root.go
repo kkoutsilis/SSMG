@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"html/template"
 	"math/rand"
@@ -12,6 +11,8 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+
+	"github.com/pkg/errors"
 	"gopkg.in/gomail.v2"
 )
 
@@ -66,13 +67,13 @@ func sendEmail(to, subject, body string) error {
 
 	port, err := strconv.Atoi(strPort)
 	if err != nil {
-		return fmt.Errorf("error reading email server port %w", err)
+		return errors.Wrap(err, "error parsing email server port")
 	}
 
 	d := gomail.NewDialer(host, port, user, password)
 	s, err := d.Dial()
 	if err != nil {
-		return fmt.Errorf("error dialing email server %w", err)
+		return errors.Wrap(err, "error dialing email server")
 	}
 
 	m := gomail.NewMessage()
@@ -88,13 +89,14 @@ func sendEmails(matches []MatchPair) ([]string, error) {
 	// TODO: add retry logic for failed emails (maybe use a queue)
 	// instead of sending each email individually,
 	// generate all the emails and send them in bulk to avoid individual errors
-	emailIssues := []string{}
+	// or prompt the user to retry
+	emailIssues := make([]string, 0, len(matches))
 	subject := "Your Secret Santa Match!"
 
 	templateFile := "./templates/email_template.html"
 	tmpl, err := template.ParseFiles(templateFile)
 	if err != nil {
-		return emailIssues, fmt.Errorf("failed to parse email template: %w", err)
+		return emailIssues, errors.Wrap(err, "failed to parse email template")
 	}
 
 	for _, match := range matches {
@@ -102,6 +104,7 @@ func sendEmails(matches []MatchPair) ([]string, error) {
 		err := tmpl.Execute(emailBodyBuffer, match)
 		if err != nil {
 			emailIssues = append(emailIssues, fmt.Sprintf("failed to execute template for %s: %v", match.From.Email, err))
+			continue
 
 		}
 		emailBody := emailBodyBuffer.String()
@@ -132,6 +135,7 @@ var rootCmd = &cobra.Command{
 
 		if !checkFileExists(filePath) {
 			return fmt.Errorf("file %s does not exist", filePath)
+
 		}
 
 		if !checkIsJson(filePath) {
@@ -140,13 +144,13 @@ var rootCmd = &cobra.Command{
 
 		file, err := os.ReadFile(filePath)
 		if err != nil {
-			return fmt.Errorf("error when opening file: %w", err)
+			return errors.Wrap(err, "error when opening file")
 		}
 
 		var payload []Data
 		err = json.Unmarshal(file, &payload)
 		if err != nil {
-			return fmt.Errorf("error reading file content: %w", err)
+			return errors.Wrap(err, "error reading file content")
 		}
 
 		if len(payload) == 0 {
@@ -156,7 +160,7 @@ var rootCmd = &cobra.Command{
 		matches := generateSecretSantaMatches(payload)
 		emailIssues, err := sendEmails(matches)
 		if err != nil {
-			return fmt.Errorf("error sending emails: %w", err)
+			return errors.Wrap(err, "error sending emails")
 		}
 		if len(emailIssues) > 0 {
 			for _, issue := range emailIssues {
