@@ -50,7 +50,7 @@ func generateSecretSantaMatches(data []Data) []MatchPair {
 }
 
 func circlularMatchingAlgorithm(data []Data) []MatchPair {
-	var matches []MatchPair
+	var matches = make([]MatchPair, 0, len(data))
 	for i := 0; i < len(data); i++ {
 		from := data[i]
 		to := data[(i+1)%len(data)]
@@ -108,7 +108,7 @@ func sendEmails(matches []MatchPair) error {
 	}
 	defer s.Close()
 
-	emailMessages := make([]*gomail.Message, len(matches))
+	emailMessages := make([]*gomail.Message, 0, len(matches))
 	for _, match := range matches {
 		emailBody, err := generateEmailBody(match)
 		if err != nil {
