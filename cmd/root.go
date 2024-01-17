@@ -16,7 +16,7 @@ import (
 	"gopkg.in/gomail.v2"
 )
 
-var version string = "0.1.0"
+var version string = "0.2.0"
 
 type Data struct {
 	Name     string   `json:"name"`
@@ -84,12 +84,15 @@ func populateEmailBody(match MatchPair, tmpl *template.Template) (string, error)
 	return emailBody, nil
 }
 
-func generateEmailMessages(matches []MatchPair) ([]*gomail.Message, error) {
-	templateFile := "./templates/email_template.html"
-	tmpl, err := template.ParseFiles(templateFile)
+func loadEmailTemplate(filePath string) (*template.Template, error) {
+	tmpl, err := template.ParseFiles(filePath)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse email template")
 	}
+	return tmpl, nil
+}
+
+func generateEmailMessages(matches []MatchPair, tmpl *template.Template) ([]*gomail.Message, error) {
 
 	emailMessages := make([]*gomail.Message, 0, len(matches))
 	for _, match := range matches {
@@ -136,14 +139,22 @@ var rootCmd = &cobra.Command{
 	Version:      version,
 	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		defaultValues := struct {
+			FilePath     string
+			TemplatePath string
+		}{
+			FilePath:     "data.json",
+			TemplatePath: "./templates/email_template.html",
+		}
+
 		var filePath string
 		if len(args) == 0 {
-			filePath = "data.json"
+			filePath = defaultValues.FilePath
 		} else {
 			filePath = args[0]
 		}
 		if filePath == "" {
-			filePath = "data.json"
+			filePath = defaultValues.FilePath
 		}
 
 		if !checkFileExists(filePath) {
@@ -171,8 +182,14 @@ var rootCmd = &cobra.Command{
 		}
 
 		matches := generateSecretSantaMatches(payload)
+		// TODO: Give users the option to use their own template
+		templateFilePath := defaultValues.TemplatePath
+		tmpl, err := loadEmailTemplate(templateFilePath)
+		if err != nil {
+			return errors.Wrap(err, "error loading email template")
+		}
 
-		emailMessages, err := generateEmailMessages(matches)
+		emailMessages, err := generateEmailMessages(matches, tmpl)
 		if err != nil {
 			return errors.Wrap(err, "error generating email messages")
 		}
