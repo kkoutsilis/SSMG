@@ -16,7 +16,7 @@ import (
 	"gopkg.in/gomail.v2"
 )
 
-var version string = "0.1.0"
+var version string = "0.2.0"
 
 type Data struct {
 	Name     string   `json:"name"`
@@ -50,7 +50,7 @@ func generateSecretSantaMatches(data []Data) []MatchPair {
 }
 
 func circlularMatchingAlgorithm(data []Data) []MatchPair {
-	var matches []MatchPair
+	var matches = make([]MatchPair, 0, len(data))
 	for i := 0; i < len(data); i++ {
 		from := data[i]
 		to := data[(i+1)%len(data)]
@@ -59,7 +59,54 @@ func circlularMatchingAlgorithm(data []Data) []MatchPair {
 	return matches
 }
 
-func sendEmail(to, subject, body string) error {
+func createEmailMessage(to, body string) *gomail.Message {
+	subject := "Your Secret Santa Match!"
+
+	message := gomail.NewMessage()
+
+	message.SetHeader("From", os.Getenv("EMAIL_FROM"))
+	message.SetHeader("To", to)
+	message.SetHeader("Subject", subject)
+	message.SetBody("text/html", body)
+
+	return message
+
+}
+
+func populateEmailBody(match MatchPair, tmpl *template.Template) (string, error) {
+	var emailBodyBuffer = &strings.Builder{}
+	err := tmpl.Execute(emailBodyBuffer, match)
+	if err != nil {
+		return "", errors.Wrap(err, "failed to execute template for email body")
+	}
+	emailBody := emailBodyBuffer.String()
+
+	return emailBody, nil
+}
+
+func loadEmailTemplate(filePath string) (*template.Template, error) {
+	tmpl, err := template.ParseFiles(filePath)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to parse email template")
+	}
+	return tmpl, nil
+}
+
+func generateEmailMessages(matches []MatchPair, tmpl *template.Template) ([]*gomail.Message, error) {
+
+	emailMessages := make([]*gomail.Message, 0, len(matches))
+	for _, match := range matches {
+		emailBody, err := populateEmailBody(match, tmpl)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to generate email body")
+		}
+		emailMessages = append(emailMessages, createEmailMessage(match.From.Email, emailBody))
+	}
+
+	return emailMessages, nil
+}
+
+func sendEmails(emailMessages ...*gomail.Message) error {
 	host := os.Getenv("EMAIL_HOST")
 	strPort := os.Getenv("EMAIL_PORT")
 	user := os.Getenv("EMAIL_USER")
@@ -75,45 +122,14 @@ func sendEmail(to, subject, body string) error {
 	if err != nil {
 		return errors.Wrap(err, "error dialing email server")
 	}
+	defer s.Close()
 
-	m := gomail.NewMessage()
-	m.SetHeader("From", os.Getenv("EMAIL_FROM"))
-	m.SetHeader("To", to)
-	m.SetHeader("Subject", subject)
-	m.SetBody("text/html", body)
-
-	return gomail.Send(s, m)
-}
-
-func sendEmails(matches []MatchPair) ([]string, error) {
-	// TODO: add retry logic for failed emails (maybe use a queue)
-	// instead of sending each email individually,
-	// generate all the emails and send them in bulk to avoid individual errors
-	// or prompt the user to retry
-	emailIssues := make([]string, 0, len(matches))
-	subject := "Your Secret Santa Match!"
-
-	templateFile := "./templates/email_template.html"
-	tmpl, err := template.ParseFiles(templateFile)
+	err = gomail.Send(s, emailMessages...)
 	if err != nil {
-		return emailIssues, errors.Wrap(err, "failed to parse email template")
+		return err
 	}
+	return nil
 
-	for _, match := range matches {
-		var emailBodyBuffer = &strings.Builder{}
-		err := tmpl.Execute(emailBodyBuffer, match)
-		if err != nil {
-			emailIssues = append(emailIssues, fmt.Sprintf("failed to execute template for %s: %v", match.From.Email, err))
-			continue
-
-		}
-		emailBody := emailBodyBuffer.String()
-
-		if err := sendEmail(match.From.Email, subject, emailBody); err != nil {
-			emailIssues = append(emailIssues, fmt.Sprintf("failed to send email to %s: %v", match.From.Email, err))
-		}
-	}
-	return emailIssues, nil
 }
 
 var rootCmd = &cobra.Command{
@@ -123,14 +139,22 @@ var rootCmd = &cobra.Command{
 	Version:      version,
 	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		defaultValues := struct {
+			FilePath     string
+			TemplatePath string
+		}{
+			FilePath:     "data.json",
+			TemplatePath: "./templates/email_template.html",
+		}
+
 		var filePath string
 		if len(args) == 0 {
-			filePath = "data.json"
+			filePath = defaultValues.FilePath
 		} else {
 			filePath = args[0]
 		}
 		if filePath == "" {
-			filePath = "data.json"
+			filePath = defaultValues.FilePath
 		}
 
 		if !checkFileExists(filePath) {
@@ -158,15 +182,21 @@ var rootCmd = &cobra.Command{
 		}
 
 		matches := generateSecretSantaMatches(payload)
-		emailIssues, err := sendEmails(matches)
+		// TODO: Give users the option to use their own template
+		templateFilePath := defaultValues.TemplatePath
+		tmpl, err := loadEmailTemplate(templateFilePath)
+		if err != nil {
+			return errors.Wrap(err, "error loading email template")
+		}
+
+		emailMessages, err := generateEmailMessages(matches, tmpl)
+		if err != nil {
+			return errors.Wrap(err, "error generating email messages")
+		}
+
+		err = sendEmails(emailMessages...)
 		if err != nil {
 			return errors.Wrap(err, "error sending emails")
-		}
-		if len(emailIssues) > 0 {
-			for _, issue := range emailIssues {
-				fmt.Println(issue)
-			}
-			fmt.Println("Some emails failed to send, please check the logs for more details")
 		}
 
 		return nil
