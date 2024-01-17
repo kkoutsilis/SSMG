@@ -59,7 +59,7 @@ func circlularMatchingAlgorithm(data []Data) []MatchPair {
 	return matches
 }
 
-func generateEmailMessage(to, body string) *gomail.Message {
+func createEmailMessage(to, body string) *gomail.Message {
 	subject := "Your Secret Santa Match!"
 
 	message := gomail.NewMessage()
@@ -73,15 +73,9 @@ func generateEmailMessage(to, body string) *gomail.Message {
 
 }
 
-func generateEmailBody(match MatchPair) (string, error) {
-	templateFile := "./templates/email_template.html"
-	tmpl, err := template.ParseFiles(templateFile)
-	if err != nil {
-		return "", errors.Wrap(err, "failed to parse email template")
-	}
-
+func populateEmailBody(match MatchPair, tmpl *template.Template) (string, error) {
 	var emailBodyBuffer = &strings.Builder{}
-	err = tmpl.Execute(emailBodyBuffer, match)
+	err := tmpl.Execute(emailBodyBuffer, match)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to execute template for email body")
 	}
@@ -90,7 +84,26 @@ func generateEmailBody(match MatchPair) (string, error) {
 	return emailBody, nil
 }
 
-func sendEmails(matches []MatchPair) error {
+func generateEmailMessages(matches []MatchPair) ([]*gomail.Message, error) {
+	templateFile := "./templates/email_template.html"
+	tmpl, err := template.ParseFiles(templateFile)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to parse email template")
+	}
+
+	emailMessages := make([]*gomail.Message, 0, len(matches))
+	for _, match := range matches {
+		emailBody, err := populateEmailBody(match, tmpl)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to generate email body")
+		}
+		emailMessages = append(emailMessages, createEmailMessage(match.From.Email, emailBody))
+	}
+
+	return emailMessages, nil
+}
+
+func sendEmails(emailMessages ...*gomail.Message) error {
 	host := os.Getenv("EMAIL_HOST")
 	strPort := os.Getenv("EMAIL_PORT")
 	user := os.Getenv("EMAIL_USER")
@@ -108,21 +121,12 @@ func sendEmails(matches []MatchPair) error {
 	}
 	defer s.Close()
 
-	emailMessages := make([]*gomail.Message, 0, len(matches))
-	for _, match := range matches {
-		emailBody, err := generateEmailBody(match)
-		if err != nil {
-			return errors.Wrap(err, "failed to generate email body")
-		}
-		emailMessages = append(emailMessages, generateEmailMessage(match.From.Email, emailBody))
-	}
-
 	err = gomail.Send(s, emailMessages...)
 	if err != nil {
 		return err
 	}
-
 	return nil
+
 }
 
 var rootCmd = &cobra.Command{
@@ -167,7 +171,13 @@ var rootCmd = &cobra.Command{
 		}
 
 		matches := generateSecretSantaMatches(payload)
-		err = sendEmails(matches)
+
+		emailMessages, err := generateEmailMessages(matches)
+		if err != nil {
+			return errors.Wrap(err, "error generating email messages")
+		}
+
+		err = sendEmails(emailMessages...)
 		if err != nil {
 			return errors.Wrap(err, "error sending emails")
 		}
