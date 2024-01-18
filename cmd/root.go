@@ -40,12 +40,13 @@ func checkIsJson(path string) bool {
 }
 
 func generateSecretSantaMatches(data []Data) []MatchPair {
+	fmt.Println("Generating Secret Santa Matches, HO HO HO...")
 	shuffledData := make([]Data, len(data))
 	copy(shuffledData, data)
 	rand.Shuffle(len(shuffledData), func(i, j int) {
 		shuffledData[i], shuffledData[j] = shuffledData[j], shuffledData[i]
 	})
-
+	fmt.Println("Matches generated, but you can't see them, HO HO HO...")
 	return circlularMatchingAlgorithm(shuffledData)
 }
 
@@ -93,7 +94,7 @@ func loadEmailTemplate(filePath string) (*template.Template, error) {
 }
 
 func generateEmailMessages(matches []MatchPair, tmpl *template.Template) ([]*gomail.Message, error) {
-
+	fmt.Println("Preparing the emails for those amazing people, HO HO HO...")
 	emailMessages := make([]*gomail.Message, 0, len(matches))
 	for _, match := range matches {
 		emailBody, err := populateEmailBody(match, tmpl)
@@ -107,6 +108,7 @@ func generateEmailMessages(matches []MatchPair, tmpl *template.Template) ([]*gom
 }
 
 func sendEmails(emailMessages ...*gomail.Message) error {
+	fmt.Println("Sending the emails, HO HO HO...")
 	host := os.Getenv("EMAIL_HOST")
 	strPort := os.Getenv("EMAIL_PORT")
 	user := os.Getenv("EMAIL_USER")
@@ -198,7 +200,7 @@ var rootCmd = &cobra.Command{
 		if err != nil {
 			return errors.Wrap(err, "error sending emails")
 		}
-
+		fmt.Println("Happy gift hunting, and happy holidays!")
 		return nil
 	},
 }
