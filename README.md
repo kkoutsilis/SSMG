@@ -1,4 +1,3 @@
-
 # SSMG 
 
 ![CI](https://github.com/kkoutsilis/SSMG/actions/workflows/ci.yml/badge.svg)
@@ -47,16 +46,21 @@ To use SSMG, you need to have go installed, clone the repo locally, provide a JS
 ```
 
 #### Run
+```bash
+go run main.go --file my_data.json   
 ```
-go run main.go my_data.json   
+or by using the binary
+```bash
+ go build --ldflags "-s -w" ssmg
+./ssmg --file my_data.json
 ```
-**Note**: If no filename is provided, the program will default to data.json.
+**Note**: If `file` flag is not provided, the program will default to data.json.
 
 
 ### Testing Emails
 
-There is a docker compose file that spins up a MailHog service that can be used for testing the emails.
-Simply `docker compose up` to use the testing MailHog service and set the environmentat variables to 
+There is a docker compose file that spins up a [MailHog](https://github.com/mailhog/MailHog) service that can be used for testing the emails.
+Simply `docker compose up` to use the testing (MailHoghttps://github.com/mailhog/MailHog) service and set the environmentat variables to 
 ```bash
 export EMAIL_HOST=localhost
 export EMAIL_PORT=1025
