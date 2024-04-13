@@ -233,7 +233,7 @@ func Execute() {
 		os.Exit(1)
 	}
 
-	rootCmd.Flags().StringVarP(&fileFlag, "file", "p", "", "Path to input file")
+	rootCmd.Flags().StringVarP(&fileFlag, "file", "f", "", "Path to input file")
 	rootCmd.Flags().StringVarP(&templateFlag, "template", "t", "", "Path to custom html email template file")
 	err := rootCmd.Execute()
 	if err != nil {
