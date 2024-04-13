@@ -16,7 +16,7 @@ import (
 	"gopkg.in/gomail.v2"
 )
 
-var version string = "0.2.0"
+var version string = "0.3.0"
 
 type Data struct {
 	Name     string   `json:"name"`
@@ -134,13 +134,16 @@ func sendEmails(emailMessages ...*gomail.Message) error {
 
 }
 
+var fileFlag string
+var templateFlag string
+
 var rootCmd = &cobra.Command{
-	Use:          "run [path]",
-	Short:        "A cli tool that generates secret santa matches and notifies the participants by email",
-	ArgAliases:   []string{"path"},
-	Version:      version,
-	SilenceUsage: true,
+	Use:     "run",
+	Short:   "A cli tool that generates secret santa matches and notifies the participants via email",
+	Example: "ssmg run --file data.json --template my_template.html",
+	Version: version,
 	RunE: func(cmd *cobra.Command, args []string) error {
+
 		defaultValues := struct {
 			FilePath     string
 			TemplatePath string
@@ -150,12 +153,9 @@ var rootCmd = &cobra.Command{
 		}
 
 		var filePath string
-		if len(args) == 0 {
-			filePath = defaultValues.FilePath
+		if strings.Trim(fileFlag, " ") != "" {
+			filePath = fileFlag
 		} else {
-			filePath = args[0]
-		}
-		if filePath == "" {
 			filePath = defaultValues.FilePath
 		}
 
@@ -184,8 +184,14 @@ var rootCmd = &cobra.Command{
 		}
 
 		matches := generateSecretSantaMatches(payload)
-		// TODO: Give users the option to use their own template
-		templateFilePath := defaultValues.TemplatePath
+
+		var templateFilePath string
+		if strings.Trim(templateFlag, " ") != "" {
+			templateFilePath = templateFlag
+		} else {
+			templateFilePath = defaultValues.TemplatePath
+		}
+
 		tmpl, err := loadEmailTemplate(templateFilePath)
 		if err != nil {
 			return errors.Wrap(err, "error loading email template")
@@ -206,6 +212,29 @@ var rootCmd = &cobra.Command{
 }
 
 func Execute() {
+	_, ok := os.LookupEnv("EMAIL_HOST")
+	if !ok {
+		fmt.Printf("EMAIL_HOST environmental variable is not set")
+		os.Exit(1)
+	}
+	_, ok = os.LookupEnv("EMAIL_PORT")
+	if !ok {
+		fmt.Printf("EMAIL_PORT environmental variable is not set")
+		os.Exit(1)
+	}
+	_, ok = os.LookupEnv("EMAIL_USER")
+	if !ok {
+		fmt.Printf("EMAIL_USER environmental variable is not set")
+		os.Exit(1)
+	}
+	_, ok = os.LookupEnv("EMAIL_PASSWORD")
+	if !ok {
+		fmt.Printf("EMAIL_PASSOWRD environmental variable is not set")
+		os.Exit(1)
+	}
+
+	rootCmd.Flags().StringVarP(&fileFlag, "file", "p", "", "Path to input file")
+	rootCmd.Flags().StringVarP(&templateFlag, "template", "t", "", "Path to custom html email template file")
 	err := rootCmd.Execute()
 	if err != nil {
 		os.Exit(1)
