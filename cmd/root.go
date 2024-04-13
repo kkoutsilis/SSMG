@@ -214,22 +214,22 @@ var rootCmd = &cobra.Command{
 func Execute() {
 	_, ok := os.LookupEnv("EMAIL_HOST")
 	if !ok {
-		fmt.Printf("EMAIL_HOST environmental variable is not set")
+		fmt.Printf("EMAIL_HOST environment variable is not set")
 		os.Exit(1)
 	}
 	_, ok = os.LookupEnv("EMAIL_PORT")
 	if !ok {
-		fmt.Printf("EMAIL_PORT environmental variable is not set")
+		fmt.Printf("EMAIL_PORT environment variable is not set")
 		os.Exit(1)
 	}
 	_, ok = os.LookupEnv("EMAIL_USER")
 	if !ok {
-		fmt.Printf("EMAIL_USER environmental variable is not set")
+		fmt.Printf("EMAIL_USER environment variable is not set")
 		os.Exit(1)
 	}
 	_, ok = os.LookupEnv("EMAIL_PASSWORD")
 	if !ok {
-		fmt.Printf("EMAIL_PASSOWRD environmental variable is not set")
+		fmt.Printf("EMAIL_PASSOWRD environment variable is not set")
 		os.Exit(1)
 	}
 
