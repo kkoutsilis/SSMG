@@ -16,7 +16,7 @@ import (
 	"gopkg.in/gomail.v2"
 )
 
-var version string = "0.3.0"
+var version string = "0.3.1"
 
 type Data struct {
 	Name     string   `json:"name"`
@@ -51,8 +51,8 @@ func generateSecretSantaMatches(data []Data) []MatchPair {
 }
 
 func circlularMatchingAlgorithm(data []Data) []MatchPair {
-	var matches = make([]MatchPair, 0, len(data))
-	for i := 0; i < len(data); i++ {
+	matches := make([]MatchPair, 0, len(data))
+	for i := range data {
 		from := data[i]
 		to := data[(i+1)%len(data)]
 		matches = append(matches, MatchPair{From: from, To: to})
@@ -75,7 +75,7 @@ func createEmailMessage(to, body string) *gomail.Message {
 }
 
 func populateEmailBody(match MatchPair, tmpl *template.Template) (string, error) {
-	var emailBodyBuffer = &strings.Builder{}
+	emailBodyBuffer := &strings.Builder{}
 	err := tmpl.Execute(emailBodyBuffer, match)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to execute template for email body")
